@@ -9,11 +9,16 @@ struct BlockWeights
 {
     // Layer Normalization 1
     Eigen::VectorXf ln1_weight;
-    Eigen::VectorXf ln1_weight;
+    Eigen::VectorXf ln1_bias;
 
     // Fused QKV Projection
     Eigen::MatrixXf c_attn_weight; //[2304, 768]
     Eigen::VectorXf c_attn_bias; //[2304]
+
+    Eigen::MatrixXf c_proj_weight; //[768, 768]
+    Eigen::VectorXf c_proj_bias; //[768]
+
+
 
     // Layer Normalization 2
     Eigen::VectorXf ln2_weight;

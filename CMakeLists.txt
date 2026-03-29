@@ -22,5 +22,4 @@ pybind11_add_module(gpt_cpp
 
 target_include_directories(gpt_cpp PRIVATE cpp/include)
 
-target_compile_options(gpt_cpp PRIVATE -03 -march=native)
-
+target_compile_options(gpt_cpp PRIVATE -O3 -march=native)
