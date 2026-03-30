@@ -55,7 +55,7 @@ class GPT2Inference
         void load_weights(const std::string& path);
 
         Eigen::MatrixXf layer_norm(const Eigen::MatrixXf& x,
-            const Eigen::VectorXf& weight, const Eigen::VectorXf& bias);
+            const Eigen::VectorXf& gamma, const Eigen::VectorXf& beta);
 
         Eigen::MatrixXf gelu(const Eigen::MatrixXf& x);
 

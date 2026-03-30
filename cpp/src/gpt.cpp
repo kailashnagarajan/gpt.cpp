@@ -94,3 +94,81 @@ void GPT2Inference::load_weights(const std::string& path)
     Eigen::Map<Eigen::VectorXf> vec_map_ln_f_bias(ptr_, 768);
     ln_f_bias = vec_map_ln_f_bias;
 }
+
+Eigen::MatrixXf GPT2Inference::gelu(const Eigen::MatrixXf& x)
+{
+    auto arr = x.array();
+    return (0.5f * arr * (1.0f + ((float)sqrt(2.0/M_PI) * (arr + 0.044715f * arr.cube())).tanh())).matrix();
+}
+
+Eigen::MatrixXf GPT2Inference::layer_norm(const Eigen::MatrixXf& x,
+    const Eigen::VectorXf& gamma, const Eigen::VectorXf& beta)
+{
+    float epsilon = 1e-5f;
+    // std::vector<Eigen::VectorXf> columns;
+    Eigen::VectorXf mean = x.rowwise().mean();
+    Eigen::MatrixXf deviation = x.colwise() - mean;
+    Eigen::VectorXf variance = deviation.array().square().rowwise().mean();
+
+    Eigen::MatrixXf normalized = deviation.colwise() / (variance.array() + epsilon).sqrt().matrix();
+
+    Eigen::MatrixXf result = normalized;
+    result = (result.array().rowwise() * gamma.transpose().array()).rowwise() + beta.transpose().array();
+    return result;
+}
+
+Eigen::MatrixXf GPT2Inference::ffn(const Eigen::MatrixXf& x, const BlockWeights& bw)
+{
+    Eigen::MatrixXf flp = (x * bw.mlp_fc_weight).rowwise() + bw.mlp_fc_bias.transpose();
+    Eigen::MatrixXf activated_flp = gelu(flp);
+    Eigen::MatrixXf slp = (activated_flp * bw.mlp_proj_weight).rowwise() + bw.mlp_proj_bias.transpose();
+
+    return slp;
+}
+
+Eigen::MatrixXf GPT2Inference::attention(const Eigen::MatrixXf& x, const BlockWeights& bw)
+{
+    Eigen::MatrixXf qkv_matrix = (x * bw.c_attn_weight).rowwise() + bw.c_attn_bias.transpose();
+
+    Eigen::MatrixXf Q = qkv_matrix.block(0, 0,      x.rows(), 768);
+    Eigen::MatrixXf K = qkv_matrix.block(0, 768,    x.rows(), 768);
+    Eigen::MatrixXf V = qkv_matrix.block(0, 768*2,  x.rows(), 768);
+
+    Eigen::MatrixXf Z = Eigen::MatrixXf::Zero(x.rows(), n_embd);
+
+    for (int i = 0; i<n_head; ++i)
+    {
+        Eigen::MatrixXf Q_head = Q.block(0, i * 64, x.rows(), 64);
+        Eigen::MatrixXf K_head = K.block(0, i * 64, x.rows(), 64);
+        Eigen::MatrixXf V_head = V.block(0, i * 64, x.rows(), 64);
+
+        Eigen::MatrixXf attention_score_head = (Q_head * K_head.transpose())/8;
+        attention_score_head.triangularView<Eigen::StrictlyUpper>().fill(
+            -std::numeric_limits<float>::infinity()
+        );
+
+        for (int t = 0; t < x.rows(); ++t)
+        {
+            Eigen::VectorXf row = attention_score_head.row(t);
+            float max_val = row.maxCoeff();
+            Eigen::VectorXf exp_row = (row.array() - max_val).exp();
+            attention_score_head.row(t) = exp_row / exp_row.sum();
+        }
+
+        Eigen::MatrixXf Z_head = attention_score_head * V_head;
+        Z.block(0, i * d_head, x.rows(), d_head) = Z_head;
+    }
+
+    Eigen::MatrixXf output_projection = (Z * bw.c_proj_weight).rowwise() + bw.c_proj_bias.transpose();
+
+    return output_projection;
+}
+
+Eigen::MatrixXf GPT2Inference::transformer_block(const Eigen::MatrixXf& x, const BlockWeights& bw)
+{
+    Eigen::MatrixXf out_copy = x;
+    out_copy = out_copy + attention(layer_norm(out_copy, bw.ln1_weight, bw.ln1_bias), bw);
+    out_copy = out_copy + ffn(layer_norm(out_copy, bw.ln2_weight, bw.ln2_bias), bw);
+
+    return out_copy;
+}
