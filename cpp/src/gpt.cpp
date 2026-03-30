@@ -44,7 +44,7 @@ void GPT2Inference::load_weights(const std::string& path)
         bw.ln1_bias = vec_map_ln1_bias;
         ptr_+=768;
 
-        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> c_attn_weight_map(ptr_, 2304, 768);
+        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> c_attn_weight_map(ptr_, 768, 2304);
         bw.c_attn_weight = c_attn_weight_map;
         ptr_+= 2304 * 768;
 
@@ -68,7 +68,7 @@ void GPT2Inference::load_weights(const std::string& path)
         bw.ln2_bias = vec_map_ln2_bias;
         ptr_+= 768;
 
-        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> mlp_fc_weight_map(ptr_, 3072, 768);
+        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> mlp_fc_weight_map(ptr_, 768, 3072);
         bw.mlp_fc_weight = mlp_fc_weight_map;
         ptr_+= 3072 * 768;
 
@@ -76,7 +76,7 @@ void GPT2Inference::load_weights(const std::string& path)
         bw.mlp_fc_bias = vec_map_mlp_fc_bias;
         ptr_+= 3072;
 
-        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> mlp_proj_weight_map(ptr_, 3072, 768);
+        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> mlp_proj_weight_map(ptr_,3072,768);
         bw.mlp_proj_weight = mlp_proj_weight_map;
         ptr_+= 768 * 3072;
 
@@ -180,7 +180,7 @@ std::vector<float> GPT2Inference::forward_pass(const std::vector<int>& tokens)
 
     for (int i = 0; i < seq_len; i++)
     {
-        x.row(i) = wte.row(tokens[i]) + wpe.row(i);
+        x.row(i) = wte.col(tokens[i]) + wpe.col(i);
     }
 
     for (int i = 0; i < n_layer; i++)
@@ -190,7 +190,7 @@ std::vector<float> GPT2Inference::forward_pass(const std::vector<int>& tokens)
 
     x = layer_norm(x, ln_f_weight, ln_f_bias);
 
-    Eigen::MatrixXf logits = x * wte.transpose();
+    Eigen::MatrixXf logits = x * wte;
 
     Eigen::VectorXf last_row = logits.row(logits.rows() - 1);
 

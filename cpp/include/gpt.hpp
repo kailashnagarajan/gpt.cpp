@@ -66,6 +66,10 @@ class GPT2Inference
         Eigen::MatrixXf transformer_block(const Eigen::MatrixXf& x, const BlockWeights& bw);
 
     public :
-        GPT2Inference(const std::string& bin_file_path);
+        GPT2Inference(const std::string& bin_file_path)
+        {
+            load_weights(bin_file_path);
+        }
+
         std::vector<float> forward_pass(const std::vector<int>& tokens);
 };

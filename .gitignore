@@ -1,2 +1,3 @@
 weights/
 build/
+__pycache__/
