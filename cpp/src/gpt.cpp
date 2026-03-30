@@ -110,7 +110,7 @@ Eigen::MatrixXf GPT2Inference::layer_norm(const Eigen::MatrixXf& x,
     Eigen::MatrixXf deviation = x.colwise() - mean;
     Eigen::VectorXf variance = deviation.array().square().rowwise().mean();
 
-    Eigen::MatrixXf normalized = deviation.colwise() / (variance.array() + epsilon).sqrt().matrix();
+    Eigen::MatrixXf normalized = (deviation.array().colwise() / (variance.array() + epsilon).sqrt()).matrix();
 
     Eigen::MatrixXf result = normalized;
     result = (result.array().rowwise() * gamma.transpose().array()).rowwise() + beta.transpose().array();
@@ -171,4 +171,28 @@ Eigen::MatrixXf GPT2Inference::transformer_block(const Eigen::MatrixXf& x, const
     out_copy = out_copy + ffn(layer_norm(out_copy, bw.ln2_weight, bw.ln2_bias), bw);
 
     return out_copy;
+}
+
+std::vector<float> GPT2Inference::forward_pass(const std::vector<int>& tokens)
+{
+    int seq_len = tokens.size();
+    Eigen::MatrixXf x(seq_len, n_embd);
+
+    for (int i = 0; i < seq_len; i++)
+    {
+        x.row(i) = wte.row(tokens[i]) + wpe.row(i);
+    }
+
+    for (int i = 0; i < n_layer; i++)
+    {
+        x = transformer_block(x, blocks[i]);
+    }
+
+    x = layer_norm(x, ln_f_weight, ln_f_bias);
+
+    Eigen::MatrixXf logits = x * wte.transpose();
+
+    Eigen::VectorXf last_row = logits.row(logits.rows() - 1);
+
+    return std::vector<float>(last_row.data(), last_row.data() + last_row.size());
 }

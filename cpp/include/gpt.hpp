@@ -30,7 +30,7 @@ struct BlockWeights
 
     // FFN second Linear Layer
     Eigen::MatrixXf mlp_proj_weight; // [768, 3072]
-    Eigen::MatrixXf mlp_proj_bias; // [768]
+    Eigen::VectorXf mlp_proj_bias; // [768]
 };
 
 class GPT2Inference
