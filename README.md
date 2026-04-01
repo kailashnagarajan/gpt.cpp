@@ -2,6 +2,8 @@
 
 I have followed the famous Karpathy video "Let's build GPT" but did it in C++.  
 
+**The relevant blog** - https://chaoticengineer.dev/blog/attention-blog/
+
 This repository only does the inference part of the karpathy video, the forward pass is done in C++. 
 
 1. `export_weights.py` - outputs gpt2 weights as a .bin file. [**run once to generate the bin**]
