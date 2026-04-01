@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).parent / "build"))
 import gpt_cpp
 import tiktoken
 import numpy as np
-
+    
 def top_k_sampling(logits, k, temperature=1.0, seed=None):
     """
     Perform top-k sampling on a list/array of logits.

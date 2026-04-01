@@ -72,4 +72,6 @@ class GPT2Inference
         }
 
         std::vector<float> forward_pass(const std::vector<int>& tokens);
+        std::pair<std::vector<float>, std::vector<double>> forward_timed(const std::vector<int>& tokens);
+
 };

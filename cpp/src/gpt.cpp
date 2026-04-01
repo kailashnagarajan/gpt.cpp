@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <cassert>
 #include <stdexcept>
+#include <chrono>
 
 void GPT2Inference::load_weights(const std::string& path)
 {
@@ -195,4 +196,44 @@ std::vector<float> GPT2Inference::forward_pass(const std::vector<int>& tokens)
     Eigen::VectorXf last_row = logits.row(logits.rows() - 1);
 
     return std::vector<float>(last_row.data(), last_row.data() + last_row.size());
+}
+
+std::pair<std::vector<float>, std::vector<double>> GPT2Inference::forward_timed(const std::vector<int>& tokens)
+{
+
+    std::vector<double> timings;
+    int seq_len = tokens.size();
+    Eigen::MatrixXf x(seq_len, n_embd);
+
+    auto start_x_row = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < seq_len; i++)
+    {
+        x.row(i) = wte.col(tokens[i]) + wpe.col(i);
+    }
+    auto end_x_row = std::chrono::high_resolution_clock::now();
+    double ms = std::chrono::duration<double, std::milli>(end_x_row - start_x_row).count();
+    timings.push_back(ms);
+
+    for (int i = 0; i < n_layer; i++)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        x = transformer_block(x, blocks[i]);
+        auto end = std::chrono::high_resolution_clock::now();
+        timings.push_back(std::chrono::duration<double, std::milli>(end - start).count());
+    }
+
+    auto start_ln = std::chrono::high_resolution_clock::now();
+
+    x = layer_norm(x, ln_f_weight, ln_f_bias);
+
+    auto end_ln = std::chrono::high_resolution_clock::now();
+    double ms_ln = std::chrono::duration<double, std::milli>(end_ln - start_ln).count();
+    timings.push_back(ms_ln);
+
+
+    Eigen::MatrixXf logits = x * wte;
+
+    Eigen::VectorXf last_row = logits.row(logits.rows() - 1);
+
+    return {std::vector<float>(last_row.data(), last_row.data() + last_row.size()), timings};
 }
