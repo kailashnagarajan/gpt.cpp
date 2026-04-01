@@ -45,3 +45,7 @@ Then finally:
 The output projection — not in the file.  
 To get logits over the vocabulary you do `hidden_states @ wte.T` — *multiply by the transpose of the token embedding matrix*. This is weight tying. The same 50257×768 matrix does double duty — lookup table on the way in, classifier on the way out. Saves 38M parameters and works surprisingly well.
 
+## How to run gpt.cpp
+  1. Run `extract_weights.py` to first generate the required .bin weights file. 
+  2. Create a `build` folder, run `cmake ..` then `make`.
+  3. Add your prompt in `run.py` then `python run.py`!
